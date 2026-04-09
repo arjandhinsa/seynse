@@ -1,8 +1,10 @@
+const BASE_URL = import.meta.env.PROD ? "https://seynse-api.seyn.co.uk" : "";
+
 async function request(endpoint, options = {}, token = null) {
   const headers = { "Content-Type": "application/json", ...options.headers };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const response = await fetch(endpoint, { ...options, headers });
+  const response = await fetch(`${BASE_URL}${endpoint}`, { ...options, headers });
 
   if (!response.ok) {
     const err = await response.json().catch(() => ({}));
