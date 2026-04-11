@@ -78,4 +78,4 @@ Active development.
 
 Core backend and frontend complete. 
 
-Next: UI polish, adaptive challenge recommendations, reflection journal, deployment.
+Next: UI polish, adaptive challenge recommendations, reflection journal.
