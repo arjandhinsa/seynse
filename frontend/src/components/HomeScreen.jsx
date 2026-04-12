@@ -24,16 +24,30 @@ export default function HomeScreen() {
   const [domainProgress, setDomainProgress] = useState([]);
   const [summary, setSummary] = useState(null);
   const [affirmation] = useState(() => AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)]);
+  const [anxietyStats, setAnxietyStats] = useState(null);
 
   useEffect(() => {
     const load = async () => {
       const token = getToken();
       if (!token) return;
       try {
-        const [summaryData, domainsData] = await Promise.all([
-          api.get("/api/progress/summary", token),
-          api.get("/api/progress/domains", token),
+        const [summaryData, domainsData, completionsData] = await Promise.all([
+        api.get("/api/progress/summary", token),
+        api.get("/api/progress/domains", token),
+        api.get("/api/challenges/completions", token),
         ]);
+        setSummary(summaryData);
+        setDomainProgress(domainsData);
+
+        // Calculate anxiety stats from completions
+        const rated = completionsData.filter(c => c.anxiety_before !== null && c.anxiety_after !== null);
+        if (rated.length > 0) {
+            const totalReduction = rated.reduce((sum, c) => sum + (c.anxiety_before - c.anxiety_after), 0);
+            const avgReduction = Math.round(totalReduction / rated.length);
+            const avgBefore = Math.round(rated.reduce((sum, c) => sum + c.anxiety_before, 0) / rated.length);
+            const avgAfter = Math.round(rated.reduce((sum, c) => sum + c.anxiety_after, 0) / rated.length);
+            setAnxietyStats({ avgReduction, avgBefore, avgAfter, count: rated.length });
+        }
         setSummary(summaryData);
         setDomainProgress(domainsData);
       } catch (e) {
@@ -97,6 +111,71 @@ export default function HomeScreen() {
               }} />
             </div>
           </div>
+        )}
+
+
+        {/* Anxiety progress */}
+        {anxietyStats && (
+        <div style={{
+            background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.05)",
+            borderRadius: 14, padding: "18px 20px", marginBottom: 24,
+            animation: "slideUp 0.5s ease-out 0.2s both",
+        }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>Anxiety Progress</span>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{anxietyStats.count} rated {anxietyStats.count === 1 ? "challenge" : "challenges"}</span>
+            </div>
+
+            <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+            <div style={{
+                flex: 1, padding: "12px", borderRadius: 10,
+                background: "rgba(255,255,255,0.03)",
+                textAlign: "center",
+            }}>
+                <p style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>{anxietyStats.avgBefore}</p>
+                <p style={{ fontSize: 11, color: "var(--text-muted)", margin: "4px 0 0" }}>Avg before</p>
+            </div>
+            <div style={{
+                flex: 1, padding: "12px", borderRadius: 10,
+                background: "rgba(255,255,255,0.03)",
+                textAlign: "center",
+            }}>
+                <p style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "var(--text-primary)" }}>{anxietyStats.avgAfter}</p>
+                <p style={{ fontSize: 11, color: "var(--text-muted)", margin: "4px 0 0" }}>Avg after</p>
+            </div>
+            <div style={{
+                flex: 1, padding: "12px", borderRadius: 10,
+                background: "rgba(90,180,90,0.08)",
+                border: "1px solid rgba(90,180,90,0.15)",
+                textAlign: "center",
+            }}>
+                <p style={{ fontSize: 22, fontWeight: 700, margin: 0, color: "#7dce82" }}>↓{anxietyStats.avgReduction}</p>
+                <p style={{ fontSize: 11, color: "#7dce82", margin: "4px 0 0" }}>Avg reduction</p>
+            </div>
+            </div>
+
+            {/* Visual bar comparing before and after */}
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "var(--text-muted)", width: 40 }}>Before</span>
+            <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{
+                height: "100%", width: `${anxietyStats.avgBefore}%`,
+                background: "var(--text-muted)", borderRadius: 3,
+                transition: "width 0.6s ease",
+                }} />
+            </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 6 }}>
+            <span style={{ fontSize: 11, color: "#7dce82", width: 40 }}>After</span>
+            <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.05)", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{
+                height: "100%", width: `${anxietyStats.avgAfter}%`,
+                background: "#7dce82", borderRadius: 3,
+                transition: "width 0.6s ease",
+                }} />
+            </div>
+            </div>
+        </div>
         )}
 
         {/* Domain cards */}
