@@ -14,20 +14,26 @@ export default function CoachChat() {
   const [sending, setSending] = useState(false);
   const [completed, setCompleted] = useState(false);
   const [challengeId, setChallengeId] = useState(null);
+  const [showSuds, setShowSuds] = useState(false);
+  const [sudsBefore, setSudsBefore] = useState(50);
+  const [sudsAfter, setSudsAfter] = useState(50);
   const chatEnd = useRef(null);
   const inputRef = useRef(null);
 
   const markComplete = async () => {
-  console.log("challengeId:", challengeId);
-  if (!challengeId) return;
-  const token = getToken();
-  try {
-    await api.post(`/api/challenges/${challengeId}/complete`, {}, token);
-    setCompleted(true);
-  } catch (e) {
-    console.error("Failed to mark complete:", e);
-  }
-};
+    if (!challengeId) return;
+    const token = getToken();
+    try {
+      await api.post(`/api/challenges/${challengeId}/complete`, {
+        anxiety_before: sudsBefore,
+        anxiety_after: sudsAfter,
+      }, token);
+      setCompleted(true);
+      setShowSuds(false);
+    } catch (e) {
+      console.error("Failed to mark complete:", e);
+    }
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -123,7 +129,7 @@ export default function CoachChat() {
   {completed ? (
     <span style={{ fontSize: 11, color: "#7dce82", fontWeight: 600, fontFamily: "var(--font-mono)" }}>✓ Complete</span>
   ) : (
-    <button onClick={markComplete} style={{
+    <button onClick={() => setShowSuds(true)} style={{
       background: "rgba(90,180,90,0.12)",
       border: "1px solid rgba(90,180,90,0.25)",
       color: "#7dce82", borderRadius: 8, padding: "5px 12px",
@@ -225,6 +231,95 @@ export default function CoachChat() {
           opacity: input.trim() ? 1 : 0.35, transition: "all 0.3s",
         }}>↑</button>
       </div>
+      {showSuds && (
+  <div onClick={() => setShowSuds(false)} style={{
+    position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    zIndex: 20, padding: 24,
+    animation: "fadeIn 0.2s ease-out",
+  }}>
+    <div onClick={e => e.stopPropagation()} style={{
+      width: "100%", maxWidth: 360, borderRadius: 20,
+      background: "#14161e", border: "1px solid rgba(255,255,255,0.08)",
+      padding: "28px 24px",
+      animation: "slideUp 0.3s ease-out",
+    }}>
+      <h3 style={{ fontSize: 18, fontWeight: 600, margin: "0 0 6px", textAlign: "center" }}>
+        How did it go?
+      </h3>
+      <p style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", margin: "0 0 24px", lineHeight: 1.5 }}>
+        Rate your anxiety before and after the challenge. This helps track your progress over time.
+      </p>
+
+      {/* Before slider */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>Before the challenge</span>
+          <span style={{ fontSize: 13, color: "var(--accent-light)", fontWeight: 600, fontFamily: "var(--font-mono)" }}>{sudsBefore}</span>
+        </div>
+        <input
+          type="range" min="0" max="100" step="1"
+          value={sudsBefore}
+          onChange={e => setSudsBefore(parseInt(e.target.value))}
+          style={{ width: "100%", accentColor: "var(--accent)" }}
+        />
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>No anxiety</span>
+          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Extreme anxiety</span>
+        </div>
+      </div>
+
+      {/* After slider */}
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>After the challenge</span>
+          <span style={{ fontSize: 13, color: "var(--accent-light)", fontWeight: 600, fontFamily: "var(--font-mono)" }}>{sudsAfter}</span>
+        </div>
+        <input
+          type="range" min="0" max="100" step="1"
+          value={sudsAfter}
+          onChange={e => setSudsAfter(parseInt(e.target.value))}
+          style={{ width: "100%", accentColor: "var(--accent)" }}
+        />
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>No anxiety</span>
+          <span style={{ fontSize: 10, color: "var(--text-muted)" }}>Extreme anxiety</span>
+        </div>
+      </div>
+
+      {/* Reduction indicator */}
+      {sudsBefore > sudsAfter && (
+        <div style={{
+          padding: "10px 14px", borderRadius: 10, marginBottom: 18,
+          background: "rgba(90,180,90,0.08)",
+          border: "1px solid rgba(90,180,90,0.2)",
+          textAlign: "center",
+        }}>
+          <span style={{ fontSize: 13, color: "#7dce82" }}>
+            ↓ {sudsBefore - sudsAfter} point reduction — that's real progress
+          </span>
+        </div>
+      )}
+
+      {/* Buttons */}
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={() => setShowSuds(false)} style={{
+          flex: 1, padding: "12px 0", borderRadius: 12,
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)",
+          color: "var(--text-primary)", fontSize: 14, fontWeight: 500,
+          cursor: "pointer",
+        }}>Cancel</button>
+        <button onClick={markComplete} style={{
+          flex: 1, padding: "12px 0", borderRadius: 12,
+          background: "var(--accent)", border: "none",
+          color: "#fff", fontSize: 14, fontWeight: 600,
+          cursor: "pointer",
+        }}>Complete ✓</button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }
