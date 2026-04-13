@@ -96,3 +96,34 @@ async def get_domain_progress(
         ))
 
     return results
+
+@router.get("/recommend")
+async def get_recommendation(
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    from app.models.challenge import Challenge, ChallengeCompletion
+    from app.services.recommender import recommend_next_challenge
+
+    # Load user's completions with challenge details
+    result = await db.execute(
+        select(ChallengeCompletion, Challenge)
+        .join(Challenge, ChallengeCompletion.challenge_id == Challenge.id)
+        .where(ChallengeCompletion.user_id == user_id)
+        .order_by(ChallengeCompletion.completed_at)
+    )
+    rows = result.all()
+
+    completions = [
+        {
+            "challenge_id": comp.challenge_id,
+            "domain": challenge.domain,
+            "level": challenge.level,
+            "anxiety_before": comp.anxiety_before,
+            "anxiety_after": comp.anxiety_after,
+        }
+        for comp, challenge in rows
+    ]
+
+    recommendation = recommend_next_challenge(completions)
+    return recommendation

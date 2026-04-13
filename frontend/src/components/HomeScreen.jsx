@@ -25,6 +25,7 @@ export default function HomeScreen() {
   const [summary, setSummary] = useState(null);
   const [affirmation] = useState(() => AFFIRMATIONS[Math.floor(Math.random() * AFFIRMATIONS.length)]);
   const [anxietyStats, setAnxietyStats] = useState(null);
+  const [recommendation, setRecommendation] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -35,6 +36,7 @@ export default function HomeScreen() {
         api.get("/api/progress/summary", token),
         api.get("/api/progress/domains", token),
         api.get("/api/challenges/completions", token),
+        api.get("/api/progress/recommend", token).then(setRecommendation).catch(() => {})
         ]);
         setSummary(summaryData);
         setDomainProgress(domainsData);
@@ -175,6 +177,26 @@ export default function HomeScreen() {
                 }} />
             </div>
             </div>
+        </div>
+        )}
+
+
+        {recommendation && (
+        <div onClick={() => navigate(`/domain/${recommendation.domain}`)} style={{
+            background: "rgba(90,180,180,0.06)", border: "1px solid rgba(90,180,180,0.15)",
+            borderRadius: 14, padding: "18px 20px", marginBottom: 24,
+            cursor: "pointer",
+            animation: "slideUp 0.5s ease-out 0.15s both",
+        }}>
+            <div style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--accent-light)", letterSpacing: 2, textTransform: "uppercase", marginBottom: 8 }}>
+            Recommended for you
+            </div>
+            <h3 style={{ fontSize: 15, fontWeight: 600, margin: "0 0 6px" }}>
+            {recommendation.domain.charAt(0).toUpperCase() + recommendation.domain.slice(1)} — Level {recommendation.level}
+            </h3>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0, lineHeight: 1.5 }}>
+            {recommendation.reason}
+            </p>
         </div>
         )}
 
