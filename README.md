@@ -78,4 +78,4 @@ Active development.
 
 Core backend and frontend complete. 
 
-Next: adaptive challenge recommendations, reflection journal.
+Next: reflection journal.
