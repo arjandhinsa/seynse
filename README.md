@@ -3,7 +3,7 @@
 A full-stack LLM powered social anxiety coaching app built on **graduated exposure therapy** often used in CBT. 
 
 
-Users can work through progressively more challenging social situations across three domains, namely: 'Everyday Social', 'Career & Professional' and 'Dating & Connection'.  
+Users can work through progressively more challenging social situations across two domains, namely: 'Everyday Social' and 'Dating & Connection'.  
 
 
 The users are supported by an AI coaching conversation that validates feelings, reframes anxious thoughts, and suggests micro-steps.
@@ -11,15 +11,14 @@ The users are supported by an AI coaching conversation that validates feelings, 
 
 ## How It Works
 
-Seynse implements a clinically-informed exposure hierarchy based on the Clark & Wells (1995) cognitive model of social anxiety. Challenges are structured across 5 difficulty levels (mapped to SUDS bands) and 3 domains:
+Seynse implements a clinically-informed exposure hierarchy based on the Clark & Wells (1995) cognitive model of social anxiety. Challenges are structured across 5 difficulty levels (mapped to SUDS bands) and 2 domains:
 
 - **Everyday Social** — casual interactions, small talk, group settings
-- **Career & Professional** — networking, interviews, workplace confidence
 - **Dating & Connection** — romantic confidence, vulnerability, rejection tolerance
 
 Each challenge targets a specific safety behaviour and cognitive distortion.  
 
-Users rate their anxiety before and after (SUDS scale, 0-100) to track progress over time.
+Users rate their anxiety before and after (SUDS scale, 0-10) to track progress over time.
 
 
 ## Tech Stack
@@ -34,7 +33,7 @@ Users rate their anxiety before and after (SUDS scale, 0-100) to track progress 
 
 ## Features
 
-- **Graduated exposure system** — 27 challenges across 3 domains, 5 difficulty levels
+- **Graduated exposure system** — 27 challenges across 2 domains, 5 difficulty levels
 - **AI coaching conversations** — Seynse responds with empathy, validates feelings before offering strategies
 - **SUDS anxiety tracking** — Rate anxiety before/after challenges to visualise progress
 - **Progress dashboard** — Overall and per-domain completion tracking
@@ -78,4 +77,4 @@ Active development.
 
 Core backend and frontend complete. 
 
-Next: reflection journal.
+Next: gameify, XP points, a point system rather than levels, UI update
