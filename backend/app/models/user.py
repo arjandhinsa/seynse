@@ -1,7 +1,7 @@
 import uuid #generates unqiqe ids
 from datetime import datetime, timezone
 
-from sqlalchemy import String, DateTime, Boolean
+from sqlalchemy import String, DateTime, Boolean, Integer, Date
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -38,6 +38,30 @@ class User(Base):
         default=True,
     ) #indicates if the user account is active
 
+    # --- gamification fields ---
+    total_xp: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    ) #total experience points earned by the user
+
+    current_streak: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )  # consecutive days with at least one completion
+
+    longest_streak: Mapped[int] = mapped_column(
+        Integer,
+        default=0,
+        nullable=False,
+    )  # personal best — never decreases
+
+    last_completion_date: Mapped[datetime] = mapped_column(
+        Date,
+        nullable=True,
+    )  # date only (not datetime) — streak compares calendar days, so time-of-day would be noise
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),
@@ -51,3 +75,4 @@ class User(Base):
 
     completions = relationship("ChallengeCompletion", back_populates="user")
     conversations = relationship("Conversation", back_populates="user")
+    achievements = relationship("UserAchievement", back_populates="user")
