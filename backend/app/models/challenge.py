@@ -133,9 +133,10 @@ class ChallengeCompletion(Base):
     )
 
     # SUDS (Subjective Units of Distress) ratings
-    # Scale: 0 = no anxiety, 100 = worst anxiety imaginable
+    # Scale: 1 (barely noticeable) → 10 (worst anxiety you can imagine)
     # Users rate before and after attempting the challenge
-    # Tracking both lets them SEE their anxiety dropping over time
+    # Tracking both lets them see their anxiety dropping over time
+
     # nullable=True because these are optional — user can skip the rating
     anxiety_before: Mapped[int] = mapped_column(
         Integer,

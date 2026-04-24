@@ -3,7 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.database import get_db
 from app.models import Challenge, ChallengeCompletion, User
@@ -29,9 +29,10 @@ class ChallengeResponse(BaseModel):
     cognitive_distortion_challenged: str | None
 
 
+#changed to 1-10 anxiety scale
 class CompletionRequest(BaseModel):
-    anxiety_before: int | None = None
-    anxiety_after: int | None = None
+    anxiety_before: int | None = Field(None, ge=1, le=10)
+    anxiety_after: int | None = Field(None, ge=1, le=10)
     notes: str | None = None
 
 
