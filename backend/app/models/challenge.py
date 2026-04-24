@@ -67,6 +67,12 @@ class Challenge(Base):
         Text,
         nullable=True,
     )
+
+    # Optional one-liner that softens or reframes the challenge.
+    tip: Mapped[str] = mapped_column(
+        Text,
+        nullable=True,
+    )
     
     # Controls the display order within a domain
     # So challenges appear in a sensible sequence
