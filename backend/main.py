@@ -4,22 +4,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import engine, Base
-
-
-# Import route modules 
+import app.models  # noqa: F401 — import for side effect: registers all models with SQLAlchemy
 from app.routes import auth, challenges, conversations, progress
 
 
-
-# Runs once on server startup, once on shutdown
-# Creates all database tables from your models on first run
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Import models here so Base knows about them before creating tables
-    from app.models.user import User
-    from app.models.challenge import Challenge, ChallengeCompletion
-    from app.models.conversation import Conversation, Message
-
+    """Create any missing tables on startup. Safe to re-run — create_all is
+    a no-op for tables that already exist. For schema changes, use
+    `python seed.py --wipe` or a proper migration."""
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print(f"✓ {settings.APP_NAME} started — tables created")
@@ -29,9 +22,9 @@ async def lifespan(app: FastAPI):
 
 # Create the FastAPI app
 app = FastAPI(
-    title="Seynse API",
+    title="Seynsei API",
     description="Social Confidence Coach — Backend API",
-    version="0.1.0",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
