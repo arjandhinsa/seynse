@@ -117,7 +117,7 @@ class ChallengeCompletion(Base):
     # Stored here due to changes in streak multiplier or bonuses over time
     # and we want to keep historical XP to stay consistent.
 
-    xp_awarded: Mapped[int] = mapped_column(
+    xp_earned: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
         default=0, 
