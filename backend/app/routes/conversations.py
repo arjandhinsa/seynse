@@ -8,13 +8,27 @@ from sqlalchemy.orm import selectinload
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.models.conversation import Conversation, Message
-from app.models.challenge import Challenge
+from app.models import Achievement, Challenge, Conversation, Message, User, UserAchievement
 from app.middleware.auth import get_current_user
 from app.services.coach import get_coach_response
+from app.services.xp import level_for_xp
 
 
 router = APIRouter()
+
+
+# Display info for the coach's system prompt. Two domains now.
+# Update here if a third domain is added.
+DOMAIN_INFO = {
+    "social": {
+        "label": "Everyday Social",
+        "description": "Daily interactions, friendships, group settings, public-speaking confidence",
+    },
+    "dating": {
+        "label": "Dating & Connection",
+        "description": "Romantic confidence, vulnerability, and rejection tolerance",
+    },
+}
 
 
 # --- Schemas ---
@@ -22,8 +36,10 @@ router = APIRouter()
 class StartConversationRequest(BaseModel):
     challenge_id: str
 
+
 class SendMessageRequest(BaseModel):
     content: str
+
 
 class MessageResponse(BaseModel):
     id: str
@@ -31,12 +47,6 @@ class MessageResponse(BaseModel):
     content: str
     created_at: str
 
-class ConversationListResponse(BaseModel):
-    id: str
-    challenge_id: str | None
-    started_at: str
-    last_message_at: str
-    message_count: int
 
 class ConversationDetailResponse(BaseModel):
     id: str
@@ -44,12 +54,42 @@ class ConversationDetailResponse(BaseModel):
     started_at: str
     messages: list[MessageResponse]
 
-# Domain display info for the system prompt
-DOMAIN_INFO = {
-    "social": {"label": "Everyday Social", "description": "Daily interactions & casual conversations"},
-    "professional": {"label": "Career & Professional", "description": "Interviews, networking & workplace confidence"},
-    "romantic": {"label": "Dating & Connection", "description": "Building confidence in romantic contexts"},
-}
+
+# --- Helpers ---
+
+def _challenge_to_dict(challenge: Challenge) -> dict:
+    """Shape a Challenge row into the dict the coach prompt expects."""
+    return {
+        "name": challenge.name,
+        "description": challenge.description,
+        "tip": challenge.tip,
+        "rationale": challenge.rationale,
+        "tier": challenge.tier,
+    }
+
+
+async def _build_user_context(user_id: str, db: AsyncSession) -> dict | None:
+    """Gamification state for the coach prompt: level, streak, most recent unlock.
+    Returns None if user not found (caller decides how to handle)."""
+    user = await db.get(User, user_id)
+    if not user:
+        return None
+
+    recent_unlock = (await db.execute(
+        select(Achievement.name)
+        .join(UserAchievement, UserAchievement.achievement_id == Achievement.id)
+        .where(UserAchievement.user_id == user_id)
+        .order_by(UserAchievement.unlocked_at.desc())
+        .limit(1)
+    )).scalar_one_or_none()
+
+    return {
+        "current_level": level_for_xp(user.total_xp),
+        "current_streak": user.current_streak,
+        "longest_streak": user.longest_streak,
+        "recent_unlock": recent_unlock,
+    }
+
 
 # --- Endpoints ---
 
@@ -59,43 +99,33 @@ async def start_conversation(
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    # Look up the challenge
-    result = await db.execute(select(Challenge).where(Challenge.id == body.challenge_id))
-    challenge = result.scalar_one_or_none()
+    challenge = await db.get(Challenge, body.challenge_id)
     if not challenge:
         raise HTTPException(status_code=404, detail="Challenge not found")
 
-    # Create conversation record
     conversation = Conversation(user_id=user_id, challenge_id=challenge.id)
     db.add(conversation)
-    await db.flush()  # Get the ID without committing yet
+    await db.flush()
 
-    # Build data dicts for the coach service
-    challenge_data = {
-        "title": challenge.title,
-        "description": challenge.description,
-        "tip": challenge.tip,
-        "rationale": challenge.rationale,
-        "level": challenge.level,
-    }
+    challenge_data = _challenge_to_dict(challenge)
     domain_data = DOMAIN_INFO.get(challenge.domain, {})
+    user_context = await _build_user_context(user_id, db)
 
-    # get the coach's first message based on the challenge
     ai_response = await get_coach_response(
         user_message=None,
         conversation_history=[],
         challenge=challenge_data,
         domain=domain_data,
+        user_context=user_context,
     )
 
-    # store the coach's message
-    seynse_msg = Message(
+    coach_msg = Message(
         conversation_id=conversation.id,
         role="assistant",
         content=ai_response["content"],
         api_metadata=json.dumps(ai_response["usage"]),
-    )    
-    db.add(seynse_msg)
+    )
+    db.add(coach_msg)
 
     conversation.total_tokens = (
         ai_response["usage"]["input_tokens"]
@@ -104,19 +134,20 @@ async def start_conversation(
 
     await db.commit()
     await db.refresh(conversation)
-    await db.refresh(seynse_msg)
+    await db.refresh(coach_msg)
 
     return ConversationDetailResponse(
         id=conversation.id,
         challenge_id=conversation.challenge_id,
         started_at=conversation.started_at.isoformat(),
         messages=[MessageResponse(
-            id=seynse_msg.id,
-            role=seynse_msg.role,
-            content=seynse_msg.content,
-            created_at=seynse_msg.created_at.isoformat(),
+            id=coach_msg.id,
+            role=coach_msg.role,
+            content=coach_msg.content,
+            created_at=coach_msg.created_at.isoformat(),
         )],
     )
+
 
 @router.post("/{conversation_id}/messages", response_model=MessageResponse)
 async def send_message(
@@ -136,24 +167,18 @@ async def send_message(
         raise HTTPException(status_code=404, detail="Conversation not found")
 
     # Load challenge for the system prompt
-    challenge_data = {}
-    domain_data = {}
+    challenge_data: dict = {}
+    domain_data: dict = {}
     if conversation.challenge_id:
-        result = await db.execute(
-            select(Challenge).where(Challenge.id == conversation.challenge_id)
-        )
-        challenge = result.scalar_one_or_none()
+        challenge = await db.get(Challenge, conversation.challenge_id)
         if challenge:
-            challenge_data = {
-                "title": challenge.title,
-                "description": challenge.description,
-                "tip": challenge.tip,
-                "rationale": challenge.rationale,
-                "level": challenge.level,
-            }
+            challenge_data = _challenge_to_dict(challenge)
             domain_data = DOMAIN_INFO.get(challenge.domain, {})
 
-    # Build history for the API
+    # Gamification context fetched on every message so the coach sees
+    # the current XP/streak — including any completion between messages.
+    user_context = await _build_user_context(user_id, db)
+
     history = [{"role": m.role, "content": m.content} for m in conversation.messages]
 
     # Store user message
@@ -164,24 +189,22 @@ async def send_message(
     )
     db.add(user_msg)
 
-    # Call OpenAI
     ai_response = await get_coach_response(
         user_message=body.content,
         conversation_history=history,
         challenge=challenge_data,
         domain=domain_data,
+        user_context=user_context,
     )
 
-    # Store seynse reply
-    seynse_msg = Message(
+    coach_msg = Message(
         conversation_id=conversation.id,
         role="assistant",
         content=ai_response["content"],
         api_metadata=json.dumps(ai_response["usage"]),
     )
-    db.add(seynse_msg)
+    db.add(coach_msg)
 
-    # Update conversation metadata
     conversation.last_message_at = datetime.now(timezone.utc)
     conversation.total_tokens += (
         ai_response["usage"]["input_tokens"]
@@ -189,11 +212,11 @@ async def send_message(
     )
 
     await db.commit()
-    await db.refresh(seynse_msg)
+    await db.refresh(coach_msg)
 
     return MessageResponse(
-        id=seynse_msg.id,
-        role=seynse_msg.role,
-        content=seynse_msg.content,
-        created_at=seynse_msg.created_at.isoformat(),
+        id=coach_msg.id,
+        role=coach_msg.role,
+        content=coach_msg.content,
+        created_at=coach_msg.created_at.isoformat(),
     )
