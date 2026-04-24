@@ -1,4 +1,4 @@
-# Seynse - A Social Confidence Coach 
+# Seynsei - A Social Confidence Coach 
 
 A full-stack LLM powered social anxiety coaching app built on **graduated exposure therapy** often used in CBT. 
 
@@ -11,7 +11,7 @@ The users are supported by an AI coaching conversation that validates feelings, 
 
 ## How It Works
 
-Seynse implements a clinically-informed exposure hierarchy based on the Clark & Wells (1995) cognitive model of social anxiety. Challenges are structured across 5 difficulty levels (mapped to SUDS bands) and 2 domains:
+Seynsei implements a clinically-informed exposure hierarchy based on the Clark & Wells (1995) cognitive model of social anxiety. Challenges are structured across 5 difficulty levels (mapped to SUDS bands) and 2 domains:
 
 - **Everyday Social** — casual interactions, small talk, group settings
 - **Dating & Connection** — romantic confidence, vulnerability, rejection tolerance
@@ -33,8 +33,8 @@ Users rate their anxiety before and after (SUDS scale, 0-10) to track progress o
 
 ## Features
 
-- **Graduated exposure system** — 27 challenges across 2 domains, 5 difficulty levels
-- **AI coaching conversations** — Seynse responds with empathy, validates feelings before offering strategies
+- **Graduated exposure system** — 18 challenges across 2 domains, 5 difficulty tiers, xp points based 
+- **AI coaching conversations** — Seynsei responds with empathy, validates feelings before offering strategies
 - **SUDS anxiety tracking** — Rate anxiety before/after challenges to visualise progress
 - **Progress dashboard** — Overall and per-domain completion tracking
 - **JWT authentication** — Secure register/login with token refresh
