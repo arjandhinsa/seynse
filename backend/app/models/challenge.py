@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import String, Integer, DateTime, ForeignKey, Text, UniqueConstraint
+from sqlalchemy import String, Integer, DateTime, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -23,7 +23,7 @@ class Challenge(Base):
         index=True,
     ) 
 
-    title: Mapped[str] = mapped_column(
+    name: Mapped[str] = mapped_column(
         String(200),
         nullable=False,
     )
@@ -33,12 +33,6 @@ class Challenge(Base):
         nullable=False,
     )
 
-    # Optional tip or hint for the challenge
-    tip: Mapped[str] = mapped_column(
-        Text,
-        nullable=True,
-    ) 
-
     # CBT rationale explaining why this challenge is helpful for anxiety
     rationale: Mapped[str] = mapped_column(
         Text,
@@ -47,10 +41,32 @@ class Challenge(Base):
 
     # Difficulty scale 1-5
     # 1 = smile at a stranger, 5 = share something vulnerable
-    level: Mapped[int] = mapped_column(
+    tier: Mapped[int] = mapped_column(
         Integer,
         nullable=False,
     )   
+
+    # Stored per-row so we can tune an individual challenge's reward
+    # without being locked to the tier's default. Seed derives from tier.
+    xp_value: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
+
+    # The specific avoidance pattern this exposure targets
+    # e.g. "eye contact avoidance", "rehearsing sentences before speaking",
+    # "checking the room for exits"
+    safety_behaviour_targeted: Mapped[str] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    # The CBT cognitive distortion this challenge is designed to disprove
+    # e.g. "mind-reading", "catastrophising", "personalisation"
+    cognitive_distortion_challenged: Mapped[str] = mapped_column(
+        Text,
+        nullable=True,
+    )
     
     # Controls the display order within a domain
     # So challenges appear in a sensible sequence
@@ -91,6 +107,25 @@ class ChallengeCompletion(Base):
         default=lambda: datetime.now(timezone.utc),
     )
 
+    #Xp awarded, including any streak multipliers or bonuses.
+    # Stored here due to changes in streak multiplier or bonuses over time
+    # and we want to keep historical XP to stay consistent.
+
+    xp_awarded: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0, 
+    )
+
+    # which day of the current streak this completion is
+    #  (1 for the first day, 2 for the second, etc)
+
+    streak_day: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1,
+    )
+
     # SUDS (Subjective Units of Distress) ratings
     # Scale: 0 = no anxiety, 100 = worst anxiety imaginable
     # Users rate before and after attempting the challenge
@@ -118,8 +153,4 @@ class ChallengeCompletion(Base):
     user = relationship("User", back_populates="completions")
     challenge = relationship("Challenge", back_populates="completions")
 
-    # UniqueConstraint — a user can only complete each challenge ONCE
-    # Without this, you could accidentally create duplicate completions
-    __table_args__ = (
-        UniqueConstraint("user_id", "challenge_id", name="uq_user_challenge"),
-    )
+    
