@@ -62,6 +62,15 @@ class User(Base):
         nullable=True,
     )  # date only (not datetime) — streak compares calendar days, so time-of-day would be noise
 
+
+    # The avatar the user has equipped, with a string code matching the frontend
+    # catalog (e.g. "the_seeker"). Nullable: a fresh user has no equipped
+    # avatar yet (frontend defaults to whichever stage matches their level).
+    equipped_avatar_id: Mapped[str] = mapped_column(
+        String(50),
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         default=lambda: datetime.now(timezone.utc),

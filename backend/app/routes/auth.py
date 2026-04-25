@@ -40,6 +40,7 @@ class UserResponse(BaseModel):
     id: str
     email: str
     display_name: str | None
+    equipped_avatar_id: str | None
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
@@ -124,4 +125,37 @@ async def get_me(
         id=user.id,
         email=user.email,
         display_name=user.display_name,
+        equipped_avatar_id=user.equipped_avatar_id, 
+    )
+
+class UpdateAvatarRequest(BaseModel):
+    equipped_avatar_id: str | None  # null clears the equip
+
+
+@router.patch("/me/avatar", response_model=UserResponse)
+async def update_equipped_avatar(
+    body: UpdateAvatarRequest,
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Set or clear the user's equipped avatar.
+
+    Validation that the avatar code is real (and that the user has unlocked it)
+    happens client-side for v1 — the catalog is hard-coded in the frontend
+    and unlock conditions are derived from level. If we ever move the catalog
+    server-side, validation moves with it.
+    """
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    user.equipped_avatar_id = body.equipped_avatar_id
+    await db.commit()
+    await db.refresh(user)
+
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        display_name=user.display_name,
+        equipped_avatar_id=user.equipped_avatar_id,
     )
