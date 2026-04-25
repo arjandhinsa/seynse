@@ -21,8 +21,8 @@ from app.services.xp import level_progress
 # Display labels for domains. If we add a third domain, update here AND in
 # the recommender's DOMAIN_PRIORITY.
 DOMAIN_LABELS = {
-    "social": "Everyday Social",
-    "dating": "Dating & Connection",
+    "social": "Social",
+    "dating": "Dating",
 }
 
 

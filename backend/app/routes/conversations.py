@@ -21,11 +21,11 @@ router = APIRouter()
 # Update here if a third domain is added.
 DOMAIN_INFO = {
     "social": {
-        "label": "Everyday Social",
+        "label": "Social",
         "description": "Daily interactions, friendships, group settings, public-speaking confidence",
     },
     "dating": {
-        "label": "Dating & Connection",
+        "label": "Dating",
         "description": "Romantic confidence, vulnerability, and rejection tolerance",
     },
 }
