@@ -1,0 +1,239 @@
+/* Seynsei — calm, painterly, CBT-grounded
+   Animal Crossing gentleness × Studio Ghibli atmosphere
+   Quiet dark mode • soft rounded corners only • desaturated accents */
+
+:root {
+  /* Dusty navy/ink-blue base */
+  --bg:    oklch(20% 0.020 250);     /* deepest — page */
+  --bg-2:  oklch(24% 0.022 250);     /* card surface */
+  --bg-3:  oklch(28% 0.024 250);     /* raised */
+  --bg-4:  oklch(33% 0.026 250);     /* highlight */
+  --ink:   oklch(94% 0.012 85);      /* warm off-white */
+  --ink-2: oklch(78% 0.018 75);      /* secondary */
+  --ink-3: oklch(58% 0.020 240);     /* tertiary / muted */
+  --line:        oklch(34% 0.018 250);
+  --line-strong: oklch(44% 0.022 250);
+
+  /* Desaturated accents */
+  --teal:     oklch(72% 0.060 200);   /* muted teal */
+  --teal-2:   oklch(80% 0.045 200);
+  --teal-ink: oklch(58% 0.060 200);
+  --rose:     oklch(74% 0.060 25);    /* warm dusty rose */
+  --rose-2:   oklch(82% 0.045 25);
+  --rose-ink: oklch(60% 0.065 25);
+  --gold:     oklch(80% 0.070 80);    /* antique gold */
+  --gold-2:   oklch(86% 0.055 80);
+  --gold-ink: oklch(64% 0.075 80);
+
+  /* Tier ramp — soft & washed */
+  --t1: oklch(76% 0.055 145);   /* sage green     T1 */
+  --t2: oklch(72% 0.060 240);   /* dusk blue      T2 */
+  --t3: oklch(70% 0.065 295);   /* heather purple T3 */
+  --t4: oklch(78% 0.075 75);    /* warm amber     T4 */
+  --t5: oklch(70% 0.075 25);    /* deep rose-gold T5 */
+
+  /* Light-mode tokens (used only by celebration light variant) */
+  --light-bg:    oklch(95% 0.012 85);
+  --light-bg-2:  oklch(92% 0.015 82);
+  --light-bg-3:  oklch(88% 0.018 80);
+  --light-ink:   oklch(28% 0.020 70);
+  --light-ink-2: oklch(48% 0.022 70);
+
+  /* Type pairing — elegant serif display + humanist sans body */
+  --display: 'Fraunces', 'DM Serif Display', Georgia, serif;
+  --serif:   'Fraunces', Georgia, serif;
+  --body:    'Nunito', 'Inter', system-ui, sans-serif;
+  --mono:    'JetBrains Mono', ui-monospace, Menlo, monospace;
+
+  /* Radii — soft rounded only, no chamfers */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: var(--body);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  background: oklch(14% 0.018 250);
+  color: var(--ink);
+}
+
+/* ─────────────────────────────────────────────
+   Soft surfaces — painterly, dusty atmosphere
+   ───────────────────────────────────────────── */
+.paper {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 25% 15%,  oklch(32% 0.040 240 / 0.55) 0%, transparent 65%),
+    radial-gradient(ellipse 70% 50% at 80% 85%,  oklch(28% 0.040 290 / 0.45) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 70% 30%,  oklch(35% 0.035 200 / 0.30) 0%, transparent 55%);
+}
+.paper-deep {
+  background-color: oklch(15% 0.020 250);
+  background-image:
+    radial-gradient(ellipse 80% 60% at 30% 20%, oklch(26% 0.040 250 / 0.55) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 75% 75%, oklch(22% 0.045 290 / 0.50) 0%, transparent 60%);
+}
+.paper-light {
+  background-color: var(--light-bg);
+  background-image:
+    radial-gradient(ellipse 70% 60% at 25% 20%, oklch(88% 0.025 70 / 0.7) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 80% 80%, oklch(86% 0.022 200 / 0.5) 0%, transparent 60%);
+}
+
+/* ─────────────────────────────────────────────
+   Type utilities
+   ───────────────────────────────────────────── */
+.display {
+  font-family: var(--display);
+  font-weight: 400;
+  font-style: normal;
+  letter-spacing: -0.01em;
+  font-variation-settings: "opsz" 36, "SOFT" 100, "WONK" 0;
+}
+.display-italic {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 400;
+  letter-spacing: -0.005em;
+  font-variation-settings: "opsz" 36, "SOFT" 100;
+}
+.body { font-family: var(--body); }
+.mono { font-family: var(--mono); font-feature-settings: 'tnum' 1; }
+.label {
+  font-family: var(--body);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+.tnum { font-variant-numeric: tabular-nums; }
+
+/* ─────────────────────────────────────────────
+   Soft cards — no chamfers, generous radii
+   ───────────────────────────────────────────── */
+.card {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+}
+.card-lg { border-radius: var(--r-lg); }
+.card-xl { border-radius: var(--r-xl); }
+
+.divider {
+  height: 1px;
+  background: var(--line);
+  border: none;
+}
+
+/* ─────────────────────────────────────────────
+   Atmospheric glow ring (replaces hex shield)
+   ───────────────────────────────────────────── */
+.aura {
+  position: relative;
+  border-radius: 50%;
+}
+.aura::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, oklch(80% 0.07 80 / 0.20) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────
+   Subtle border accents
+   ───────────────────────────────────────────── */
+.edge-soft   { box-shadow: inset 0 0 0 1px var(--line); }
+.edge-gold   { box-shadow: inset 0 0 0 1px oklch(80% 0.07 80 / 0.55); }
+.edge-active { box-shadow: inset 0 0 0 1px oklch(80% 0.07 80 / 0.8), 0 0 24px oklch(80% 0.07 80 / 0.18); }
+
+/* ─────────────────────────────────────────────
+   Particles — slow drifting dust motes / petals
+   ───────────────────────────────────────────── */
+@keyframes drift-slow {
+  0%   { transform: translate(0, -10px) rotate(0deg);   opacity: 0; }
+  8%   { opacity: 0.7; }
+  90%  { opacity: 0.7; }
+  100% { transform: translate(var(--dx, 30px), 110vh) rotate(180deg); opacity: 0; }
+}
+.mote {
+  position: absolute;
+  border-radius: 50%;
+  animation: drift-slow var(--dur, 18s) linear infinite;
+  animation-delay: var(--delay, 0s);
+  pointer-events: none;
+}
+.petal {
+  position: absolute;
+  animation: drift-slow var(--dur, 14s) ease-in-out infinite;
+  animation-delay: var(--delay, 0s);
+  pointer-events: none;
+}
+
+/* ─────────────────────────────────────────────
+   Gentle motion
+   ───────────────────────────────────────────── */
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fade-up 0.6s ease-out both; }
+
+@keyframes breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 0.85; transform: scale(1.04); }
+}
+.breathe { animation: breathe 4.5s ease-in-out infinite; }
+
+@keyframes xp-fill {
+  from { width: var(--from, 0%); }
+  to   { width: var(--to, 100%); }
+}
+.xp-fill { animation: xp-fill 1.6s cubic-bezier(.4,0,.2,1) 0.3s both; }
+
+@keyframes glow-soft {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(80% 0.07 80 / 0); 0 0 28px oklch(80% 0.07 80 / 0.20); }
+  50%      { box-shadow: 0 0 0 0 oklch(80% 0.07 80 / 0); 0 0 40px oklch(80% 0.07 80 / 0.32); }
+}
+.glow-soft { animation: glow-soft 4s ease-in-out infinite; }
+
+button {
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+/* Hand-drawn underline for selected nav items */
+.handline {
+  position: relative;
+}
+.handline::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -6px;
+  width: 22px;
+  height: 5px;
+  transform: translateX(-50%);
+  background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 5'><path d='M1 3.2 Q 6 1, 12 3 T 23 2.8' stroke='%23d4b878' stroke-width='1.2' fill='none' stroke-linecap='round'/></svg>") no-repeat center / contain;
+  opacity: 0.9;
+}
+
+/* Tame scrollbars */
+.scroll::-webkit-scrollbar { width: 0; }
+.scroll { scrollbar-width: none; }
+
+/* Tap feedback — gentle */
+.tap { transition: transform 0.18s ease, opacity 0.18s ease; }
+.tap:active { transform: scale(0.985); opacity: 0.85; }

@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Seynsei</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..600,30..100;1,9..144,300..600,30..100&family=Nunito:wght@300;400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="styles.css" />
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="primitives.jsx"></script>
+<script type="text/babel" src="portraits.jsx"></script>
+<script type="text/babel" src="screens.jsx"></script>
+<script type="text/babel" data-presets="env,react">
+const { useState, useEffect } = React;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "view": "prototype",
+  "celebrationMode": "light",
+  "xpProminence": "tucked",
+  "ornament": "low",
+  "displayFont": "Fraunces",
+  "tierRamp": "soft",
+  "animationIntensity": "normal",
+  "gender": "male"
+}/*EDITMODE-END*/;
+
+// Soft, washed tier ramps — never bold fills
+const TIER_RAMPS = {
+  soft:    { 1: 'oklch(76% 0.055 145)', 2: 'oklch(72% 0.060 240)', 3: 'oklch(70% 0.065 295)', 4: 'oklch(78% 0.075 75)',  5: 'oklch(70% 0.075 25)' },
+  classic: { 1: 'oklch(72% 0.10 145)',  2: 'oklch(68% 0.10 240)',  3: 'oklch(64% 0.12 295)',  4: 'oklch(78% 0.10 80)',   5: 'oklch(66% 0.12 25)' },
+  metal:   { 1: 'oklch(62% 0.02 60)',   2: 'oklch(66% 0.05 50)',   3: 'oklch(78% 0.02 80)',   4: 'oklch(80% 0.08 85)',   5: 'oklch(78% 0.05 220)' },
+};
+
+const FONTS = {
+  Fraunces:  "'Fraunces', 'DM Serif Display', Georgia, serif",
+  DMSerif:   "'DM Serif Display', 'Fraunces', Georgia, serif",
+  Recoleta:  "'Fraunces', 'Recoleta', Georgia, serif",
+};
+
+function applyTokens(t) {
+  const r = TIER_RAMPS[t.tierRamp] || TIER_RAMPS.soft;
+  const root = document.documentElement;
+  Object.entries(r).forEach(([k, v]) => root.style.setProperty(`--t${k}`, v));
+  root.style.setProperty('--display', FONTS[t.displayFont] || FONTS.Fraunces);
+}
+
+// ── Prototype shell — full-bleed mobile canvas ─────────────────
+function PrototypeShell({ tweaks }) {
+  const [screen, setScreen] = useState('home');
+  const W = 380, H = 800;
+
+  const goto = (id) => {
+    if (id === 'challenges') setScreen('challenges');
+    else if (id === 'coach') setScreen('coach');
+    else if (id === 'profile') setScreen('avatars');
+    else if (id === 'home') setScreen('home');
+  };
+
+  const screens = {
+    home:        <HomeScreen onNav={goto} onSelectChallenge={() => setScreen('challenges')}
+                             xpProminence={tweaks.xpProminence}
+                             gender={tweaks.gender}
+                             density={tweaks.ornament === 'low' ? 'low' : 'balanced'} />,
+    challenges:  <ChallengeBrowseScreen onNav={goto} onPick={() => setScreen('celebration')} gender={tweaks.gender} />,
+    celebration: <CelebrationScreen onNav={goto} onCoach={() => setScreen('coach')} gender={tweaks.gender} />,
+    coach:       <CoachScreen onNav={goto} gender={tweaks.gender} />,
+    avatars:     <AvatarSelectorScreen onNav={goto} gender={tweaks.gender} />,
+  };
+
+  const stops = [
+    { id: 'home',        label: 'Home' },
+    { id: 'challenges',  label: 'Challenges' },
+    { id: 'coach',       label: 'Sensei' },
+    { id: 'avatars',     label: 'Avatar' },
+  ];
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: 'radial-gradient(ellipse at 30% 15%, oklch(18% 0.025 250) 0%, oklch(10% 0.015 260) 75%)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center',
+      padding: '40px 20px 60px', gap: 30,
+      fontFamily: 'var(--body)',
+    }}>
+      <Wordmark />
+
+      <div style={{ display: 'flex', gap: 2, flexWrap: 'nowrap', justifyContent: 'center',
+                    background: 'oklch(from var(--bg-2) l c h / 0.6)',
+                    border: '1px solid oklch(from var(--line) l c h / 0.5)',
+                    borderRadius: 'var(--r-pill)', padding: 4, maxWidth: '100%' }}>
+        {stops.map(s => (
+          <button key={s.id} onClick={() => setScreen(s.id)}
+                  style={{
+                    background: screen === s.id ? 'oklch(from var(--gold) calc(l - 0.30) c h / 0.7)' : 'transparent',
+                    border: screen === s.id ? '1px solid oklch(from var(--gold) l c h / 0.45)' : '1px solid transparent',
+                    color: screen === s.id ? 'var(--gold-2)' : 'var(--ink-2)',
+                    padding: '7px 14px',
+                    borderRadius: 'var(--r-pill)',
+                    fontFamily: 'var(--display)',
+                    fontStyle: screen === s.id ? 'italic' : 'normal',
+                    fontSize: 13, fontWeight: 400,
+                    whiteSpace: 'nowrap',
+                  }}>{s.label}</button>
+        ))}
+      </div>
+
+      <div style={{
+        width: W, height: H, position: 'relative',
+        background: 'var(--bg)',
+        borderRadius: 36, overflow: 'hidden',
+        boxShadow: '0 50px 120px rgba(0,0,0,0.55), 0 0 0 1px oklch(36% 0.025 250), inset 0 0 0 1px oklch(30% 0.020 250)',
+      }}>
+        {screens[screen]}
+      </div>
+
+      <div style={{ color: 'var(--ink-3)', fontSize: 11.5, fontFamily: 'var(--body)', fontStyle: 'italic', opacity: 0.7 }}>
+        tap the whisper on home → choose a quest → cross the bridge → reflect
+      </div>
+    </div>
+  );
+}
+
+function Wordmark() {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 4 }}>
+      <SeynseiMark size={30} />
+      <div>
+        <div className="display" style={{
+          fontSize: 28, color: 'var(--ink)', letterSpacing: '0.005em', fontWeight: 400, lineHeight: 1,
+        }}>Seynsei</div>
+        <div className="body" style={{ fontSize: 11, color: 'var(--gold-2)', fontStyle: 'italic', letterSpacing: '0.04em', marginTop: 4, opacity: 0.8 }}>
+          quietly, with you
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SeynseiMark({ size = 28 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 40 40">
+      <defs>
+        <radialGradient id="mark-aura" cx="50%" cy="50%" r="55%">
+          <stop offset="0%" stopColor="oklch(from var(--gold) l c h / 0.6)" />
+          <stop offset="100%" stopColor="transparent" />
+        </radialGradient>
+      </defs>
+      <circle cx="20" cy="20" r="20" fill="url(#mark-aura)" />
+      <circle cx="20" cy="20" r="12" fill="none" stroke="oklch(from var(--gold) l c h / 0.5)" strokeWidth="0.8" />
+      <circle cx="20" cy="20" r="5" fill="var(--gold-2)" opacity="0.85" />
+      <path d="M14 22 Q 20 26, 26 22" stroke="var(--gold-2)" strokeWidth="0.8" fill="none" opacity="0.7" />
+    </svg>
+  );
+}
+
+// ── Canvas overview ────────────────────────────────────────────
+function CanvasOverview({ tweaks }) {
+  const W = 380, H = 800;
+  const g = tweaks.gender;
+  const screenStyle = { width: W, height: H, position: 'relative', background: 'var(--bg)', borderRadius: 28, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 0 0 1px oklch(34% 0.020 250)' };
+
+  return (
+    <DesignCanvas>
+      <DCSection id="screens" title="The five screens" subtitle="Calm, painterly, CBT-grounded.">
+        <DCArtboard id="s1" label="01 · Home" width={W} height={H}>
+          <div style={screenStyle}><HomeScreen xpProminence={tweaks.xpProminence} density="low" gender={g} /></div>
+        </DCArtboard>
+        <DCArtboard id="s2" label="02 · Challenges" width={W} height={H}>
+          <div style={screenStyle}><ChallengeBrowseScreen gender={g} /></div>
+        </DCArtboard>
+        <DCArtboard id="s3" label="03 · After (post-challenge)" width={W} height={H}>
+          <div style={screenStyle}><CelebrationScreen gender={g} /></div>
+        </DCArtboard>
+        <DCArtboard id="s4" label="04 · Sensei" width={W} height={H}>
+          <div style={screenStyle}><CoachScreen gender={g} /></div>
+        </DCArtboard>
+        <DCArtboard id="s5" label="05 · Forms" width={W} height={H}>
+          <div style={screenStyle}><AvatarSelectorScreen gender={g} /></div>
+        </DCArtboard>
+      </DCSection>
+
+      <DCSection id="system" title="Quiet design language" subtitle="Type · color · soft surfaces">
+        <DCArtboard id="tokens" label="Tokens" width={760} height={620}>
+          <TokensCard gender={tweaks.gender} />
+        </DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+function TokensCard({ gender = 'male' }) {
+  return (
+    <div className="paper" style={{ width: '100%', height: '100%', padding: 36, color: 'var(--ink)', overflow: 'auto' }}>
+      <div className="label" style={{ color: 'var(--gold-2)' }}>Seynsei · design language</div>
+      <div className="display" style={{ fontSize: 36, marginTop: 8, lineHeight: 1.1 }}>
+        Calm, <span className="display-italic">painterly</span>, present.
+      </div>
+      <div className="body" style={{ fontSize: 13.5, color: 'var(--ink-2)', marginTop: 14, lineHeight: 1.5, maxWidth: 560 }}>
+        Animal Crossing's gentleness × Studio Ghibli's atmosphere. Progression felt through soft glow and
+        slow drifting particles — never badges, never confetti.
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 36, marginTop: 28 }}>
+        <div>
+          <div className="label" style={{ marginBottom: 12 }}>type</div>
+          <div className="display" style={{ fontSize: 32, lineHeight: 1.05 }}>Fraunces</div>
+          <div className="display-italic" style={{ fontSize: 22, color: 'var(--ink-2)', marginTop: 4 }}>elegant, warm, soft</div>
+          <div className="body" style={{ fontSize: 13, color: 'var(--ink-2)', marginTop: 10, lineHeight: 1.5 }}>
+            Nunito for body — humanist, breathing. JetBrains Mono only for numerals.
+          </div>
+        </div>
+        <div>
+          <div className="label" style={{ marginBottom: 12 }}>surfaces</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+            {['var(--bg)', 'var(--bg-2)', 'var(--bg-3)', 'var(--bg-4)'].map(c => (
+              <div key={c} style={{ height: 44, background: c, borderRadius: 'var(--r-sm)', border: '1px solid var(--line)' }} />
+            ))}
+          </div>
+          <div className="label" style={{ marginTop: 18, marginBottom: 12 }}>accents</div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            {[['teal','var(--teal)'],['rose','var(--rose)'],['gold','var(--gold)']].map(([n,c]) => (
+              <div key={n} style={{ flex: 1 }}>
+                <div style={{ height: 36, background: c, borderRadius: 'var(--r-pill)', opacity: 0.85 }} />
+                <div className="body" style={{ fontSize: 10.5, marginTop: 6, color: 'var(--ink-3)', letterSpacing: '0.06em' }}>{n}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="label" style={{ marginTop: 28, marginBottom: 14 }}>tier ramp · sage → rose-gold</div>
+      <div style={{ display: 'flex', gap: 18 }}>
+        {[1,2,3,4,5].map(t => (
+          <div key={t} style={{ flex: 1, textAlign: 'center' }}>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <TierDot tier={t} size={28} withLabel={false} />
+            </div>
+            <div className="body" style={{ fontSize: 10.5, color: 'var(--ink-3)', marginTop: 8, letterSpacing: '0.04em' }}>
+              {TIER_NAMES[t]}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="label" style={{ marginTop: 28, marginBottom: 14 }}>portrait studies · Ghibli-leaning · {gender === 'female' ? 'female form' : 'male form'}</div>
+      <div style={{ display: 'flex', gap: 10, justifyContent: 'space-between' }}>
+        {['hidden','seeker','apprentice','adept','open','sage'].map((v, i) => (
+          <div key={v} style={{ width: 92, height: 110, borderRadius: 'var(--r-md)', overflow: 'hidden',
+                                background: 'var(--bg-3)',
+                                border: '1px solid var(--line)',
+                                display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+            <AnimePortrait tier={Math.min(i+1, 5)} variant={v} size={92} gender={gender} />
+          </div>
+        ))}
+      </div>
+      {/* the OTHER form, smaller, for comparison */}
+      <div className="label" style={{ marginTop: 18, marginBottom: 10, opacity: 0.7 }}>same character · {gender === 'female' ? 'male form' : 'female form'}</div>
+      <div style={{ display: 'flex', gap: 8, justifyContent: 'space-between' }}>
+        {['hidden','seeker','apprentice','adept','open','sage'].map((v, i) => (
+          <div key={v} style={{ width: 76, height: 90, borderRadius: 'var(--r-md)', overflow: 'hidden',
+                                background: 'var(--bg-3)',
+                                border: '1px solid var(--line)',
+                                display: 'flex', alignItems: 'flex-end', justifyContent: 'center', opacity: 0.85 }}>
+            <AnimePortrait tier={Math.min(i+1, 5)} variant={v} size={76} gender={gender === 'female' ? 'male' : 'female'} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  useEffect(() => { applyTokens(t); }, [t.tierRamp, t.displayFont]);
+
+  return (
+    <>
+      {t.view === 'prototype'
+        ? <PrototypeShell tweaks={t} />
+        : <CanvasOverview tweaks={t} />}
+
+      <div style={{
+        position: 'fixed', top: 14, left: 14, zIndex: 100,
+        display: 'flex', gap: 0,
+        background: 'oklch(from var(--bg-2) l c h / 0.85)',
+        border: '1px solid oklch(from var(--line) l c h / 0.6)',
+        borderRadius: 'var(--r-pill)', padding: 3,
+        backdropFilter: 'blur(12px)',
+      }}>
+        {[['prototype','Prototype'],['canvas','Canvas']].map(([v, l]) => (
+          <button key={v} onClick={() => setTweak('view', v)}
+                  style={{
+                    background: t.view === v ? 'oklch(from var(--gold) calc(l - 0.30) c h / 0.7)' : 'transparent',
+                    border: 'none',
+                    color: t.view === v ? 'var(--gold-2)' : 'var(--ink-2)',
+                    padding: '6px 14px', borderRadius: 'var(--r-pill)',
+                    fontFamily: 'var(--display)',
+                    fontStyle: t.view === v ? 'italic' : 'normal',
+                    fontSize: 12.5, fontWeight: 400,
+                  }}>{l}</button>
+        ))}
+      </div>
+
+      <TweaksPanel>
+        <TweakSection label="View" />
+        <TweakRadio label="Mode" value={t.view} options={['prototype','canvas']}
+                    onChange={v => setTweak('view', v)} />
+
+        <TweakSection label="Character" />
+        <TweakRadio label="Form" value={t.gender}
+                    options={[{value:'male',label:'Male'},{value:'female',label:'Female'}]}
+                    onChange={v => setTweak('gender', v)} />
+
+        <TweakSection label="Celebration" />
+        <TweakRadio label="Particles" value={t.animationIntensity}
+                    options={[{value:'low',label:'Quiet'},{value:'normal',label:'Drifting'},{value:'high',label:'More'}]}
+                    onChange={v => setTweak('animationIntensity', v)} />
+
+        <TweakSection label="System" />
+        <TweakRadio label="Tier ramp" value={t.tierRamp}
+                    options={[{value:'soft',label:'Soft'},{value:'classic',label:'Classic'},{value:'metal',label:'Metal'}]}
+                    onChange={v => setTweak('tierRamp', v)} />
+        <TweakRadio label="Display font" value={t.displayFont}
+                    options={[{value:'Fraunces',label:'Fraunces'},{value:'DMSerif',label:'DM Serif'},{value:'Recoleta',label:'Recoleta'}]}
+                    onChange={v => setTweak('displayFont', v)} />
+      </TweaksPanel>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
