@@ -15,8 +15,15 @@ from app.config import settings
 is_postgres = "postgresql" in settings.DATABASE_URL or "supabase" in settings.DATABASE_URL
 is_sqlite = "sqlite" in settings.DATABASE_URL
 
+# Supabase + Postgres copy-paste URLs come as `postgresql://...`, which
+# SQLAlchemy routes to psycopg2 (sync). create_async_engine needs an async
+# driver, and the connect_args below are asyncpg-specific anyway.
+db_url = settings.DATABASE_URL
+if db_url.startswith("postgresql://"):
+    db_url = "postgresql+asyncpg://" + db_url[len("postgresql://"):]
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
+    db_url,
     echo=(settings.APP_ENV == "development"),
     poolclass=NullPool if is_postgres else None,
     connect_args={
