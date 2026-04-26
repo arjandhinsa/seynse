@@ -1,0 +1,26 @@
+name: Keep API warm
+
+# Render's free tier spins the service down after 15 minutes of no traffic.
+# Cold start on the next request is 30-60s, which makes the app feel broken.
+# This workflow pings the API every 5 minutes so it stays warm.
+#
+# GitHub Actions cron is best-effort and can be delayed under load, so we
+# schedule more often than the 15-minute spin-down window to compensate.
+# When we move off Render's free tier, this whole workflow can be deleted.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Ping /docs
+        run: |
+          curl -fsS --max-time 90 \
+            -o /dev/null \
+            -w "HTTP %{http_code} in %{time_total}s\n" \
+            https://api-seynsei.seyn.co.uk/docs
