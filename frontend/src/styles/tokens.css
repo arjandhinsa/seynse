@@ -237,3 +237,32 @@ button {
 /* Tap feedback — gentle */
 .tap { transition: transform 0.18s ease, opacity 0.18s ease; }
 .tap:active { transform: scale(0.985); opacity: 0.85; }
+
+/* Keyboard focus — visible ring for tab navigation only.
+   :focus-visible only matches keyboard-driven focus, so pointer clicks
+   stay clean. */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: var(--r-sm);
+}
+
+/* Smooth scroll globally (overridden under reduced-motion below). */
+html { scroll-behavior: smooth; }
+
+/* ─────────────────────────────────────────────
+   Reduced motion — accessibility-mandatory.
+   Keeping 0.01ms instead of `none` so animations still fire their end
+   state — anything depending on the end state keeps working. None of
+   our animations signal state, so a global override is safe.
+   ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

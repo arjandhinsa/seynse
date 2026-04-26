@@ -7,12 +7,14 @@ Populates the database with:
 
 Usage:
   python seed.py              # seed only if tables are empty (safe to re-run)
-  python seed.py --wipe       # DESTRUCTIVE: drop and recreate all tables, then seed
+  python seed.py --wipe       # DESTRUCTIVE (DEV ONLY): drop all tables, run
+                              # `alembic upgrade head`, reseed catalogue.
 """
 import argparse
 import asyncio
+import subprocess
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, text
 
 from app.database import engine, Base, SessionLocal
 # Importing from app.models triggers models/__init__.py, which imports every
@@ -244,12 +246,18 @@ SEED_ACHIEVEMENTS = [
 # Database operations
 # ============================================================================
 async def wipe_all():
-    """Drop every table and recreate from current model definitions.
+    """Drop every table, run alembic upgrade head, then reseed.
     DESTRUCTIVE. Only run in dev, or when cutting over to a fresh database."""
+    print("[seed --wipe] DESTRUCTIVE — only run in dev. "
+          "Drops all tables, recreates via alembic, reseeds catalogue.")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-    print("Database wiped and recreated.")
+        # Drop alembic_version too — otherwise upgrade head is a no-op
+        # because alembic still thinks it's at head.
+        await conn.execute(text("DROP TABLE IF EXISTS alembic_version"))
+    # Subprocess so alembic owns schema creation end-to-end (same path as prod).
+    subprocess.run(["alembic", "upgrade", "head"], check=True)
+    print("Database wiped and recreated via alembic.")
 
 
 async def seed_challenges(session):
@@ -299,12 +307,9 @@ async def seed_achievements(session):
 async def main(wipe: bool):
     if wipe:
         await wipe_all()
-    else:
-        # Non-destructive: ensure tables exist (harmless on existing DBs),
-        # then the seed functions themselves skip if data is already present.
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-
+    # Non-wipe path assumes the schema already exists. On a fresh checkout
+    # run `alembic upgrade head` first, then `python seed.py`. The seed
+    # functions skip if catalogue rows are already present.
     async with SessionLocal() as session:
         await seed_challenges(session)
         await seed_achievements(session)

@@ -128,28 +128,45 @@ async def get_me(
         equipped_avatar_id=user.equipped_avatar_id, 
     )
 
-class UpdateAvatarRequest(BaseModel):
-    equipped_avatar_id: str | None  # null clears the equip
+class UpdateMeRequest(BaseModel):
+    """All fields optional. Only fields present in the request body get
+    updated; others are left untouched. Pass `null` explicitly to clear
+    a nullable field (e.g. unequip an avatar)."""
+    display_name: str | None = None
+    equipped_avatar_id: str | None = None
 
 
-@router.patch("/me/avatar", response_model=UserResponse)
-async def update_equipped_avatar(
-    body: UpdateAvatarRequest,
+@router.patch("/me", response_model=UserResponse)
+async def update_me(
+    body: UpdateMeRequest,
     user_id: str = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Set or clear the user's equipped avatar.
+    """Update the current user's profile fields. PATCH semantics — only
+    fields present in the request body are touched. Use the body of the
+    request payload (not query strings) to differentiate "field omitted"
+    from "field explicitly set to null".
 
-    Validation that the avatar code is real (and that the user has unlocked it)
-    happens client-side for v1 — the catalog is hard-coded in the frontend
-    and unlock conditions are derived from level. If we ever move the catalog
-    server-side, validation moves with it.
+    Validation that an avatar code is real / unlocked happens client-side
+    for v1 (the catalogue is hard-coded in the frontend; unlocks are
+    level-derived). Move server-side if/when the catalogue moves.
     """
     user = await db.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    user.equipped_avatar_id = body.equipped_avatar_id
+    # PATCH semantics: use model_dump(exclude_unset=True) so we only
+    # touch fields the client explicitly sent.
+    updates = body.model_dump(exclude_unset=True)
+
+    if "display_name" in updates:
+        # Treat empty/whitespace as null (clears the name)
+        name = updates["display_name"]
+        user.display_name = name.strip() if name and name.strip() else None
+
+    if "equipped_avatar_id" in updates:
+        user.equipped_avatar_id = updates["equipped_avatar_id"]
+
     await db.commit()
     await db.refresh(user)
 
@@ -159,3 +176,20 @@ async def update_equipped_avatar(
         display_name=user.display_name,
         equipped_avatar_id=user.equipped_avatar_id,
     )
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_me(
+    user_id: str = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Hard-delete the current user and everything associated. All FKs to
+    users.id use ondelete=CASCADE, so the DB drops the user's
+    challenge_completions, conversations (and their messages),
+    user_achievements, and recommendation_logs in one go."""
+    user = await db.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.delete(user)
+    await db.commit()
+    # 204 — frontend handles logout + redirect.

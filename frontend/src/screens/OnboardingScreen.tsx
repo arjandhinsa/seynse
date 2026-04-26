@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useCurrentUser } from '../api/hooks/useAuth'
+import { useCurrentUser, useUpdateMe } from '../api/hooks/useAuth'
 import { AuthLayout } from '../components/AuthLayout'
 import { SoftButton } from '../components/SoftButton'
 import { SoftInput } from '../components/SoftInput'
 
 const ONBOARDED_KEY = 'seynsei.onboarded'
-const DISPLAY_NAME_KEY = 'seynsei.display_name'
 
 export default function OnboardingScreen() {
   const navigate = useNavigate()
   const me = useCurrentUser()
+  const updateMe = useUpdateMe()
   const [step, setStep] = useState<1 | 2 | 3>(1)
   const [name, setName] = useState('')
 
@@ -23,14 +23,18 @@ export default function OnboardingScreen() {
     navigate('/home', { replace: true })
   }
 
-  const handleNameContinue = () => {
+  const handleNameContinue = async () => {
     const trimmed = name.trim()
     const initial = me.data?.display_name ?? ''
     if (trimmed && trimmed !== initial) {
-      // TODO: persist display_name to backend once a PATCH endpoint for it
-      // exists. For now we keep it client-side so the rest of the UI can
-      // address the user by name.
-      localStorage.setItem(DISPLAY_NAME_KEY, trimmed)
+      // Persist the new name to the backend. We swallow errors here on
+      // purpose — onboarding shouldn't block on a name update; the user
+      // can still set it later from settings.
+      try {
+        await updateMe.mutateAsync({ display_name: trimmed })
+      } catch {
+        // Silent failure; advance anyway.
+      }
     }
     setStep(3)
   }
@@ -65,7 +69,7 @@ export default function OnboardingScreen() {
             }}
           >
             A quiet space to practise being seen. Your coach is Sensei. We
-            move at your pace — there's no rush.
+            move at your pace. There's no rush.
           </p>
           <SoftButton
             primary

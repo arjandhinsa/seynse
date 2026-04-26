@@ -11,6 +11,8 @@ import ChallengeDetailScreen from './screens/ChallengeDetailScreen'
 import ChallengeCompleteScreen from './screens/ChallengeCompleteScreen'
 import CelebrationScreen from './screens/CelebrationScreen'
 import SenseiChatScreen from './screens/SenseiChatScreen'
+import ProfileScreen from './screens/ProfileScreen'
+import SettingsScreen from './screens/SettingsScreen'
 
 const ONBOARDED_KEY = 'seynsei.onboarded'
 
@@ -60,26 +62,6 @@ function RedirectIfAuthed() {
   return <Outlet />
 }
 
-function Placeholder({ name }: { name: string }) {
-  return (
-    <div
-      className="paper-deep"
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'var(--bg)',
-        color: 'var(--ink)',
-        fontFamily: 'var(--display)',
-        fontSize: 32,
-      }}
-    >
-      {name}
-    </div>
-  )
-}
-
 function App() {
   return (
     <Routes>
@@ -100,7 +82,8 @@ function App() {
           <Route path="/challenges/:id/complete" element={<ChallengeCompleteScreen />} />
           <Route path="/celebration" element={<CelebrationScreen />} />
           <Route path="/sensei" element={<SenseiChatScreen />} />
-          <Route path="/profile" element={<Placeholder name="Profile" />} />
+          <Route path="/profile" element={<ProfileScreen />} />
+          <Route path="/settings" element={<SettingsScreen />} />
         </Route>
       </Route>
 

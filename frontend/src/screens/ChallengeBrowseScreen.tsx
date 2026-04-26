@@ -422,19 +422,9 @@ function EmptyBlock() {
     <SoftCard padding={20} radius="var(--r-lg)">
       <div
         className="display-italic"
-        style={{ fontSize: 16, color: 'var(--ink-2)', marginBottom: 8 }}
+        style={{ fontSize: 16, color: 'var(--ink-2)' }}
       >
-        No challenges yet.
-      </div>
-      <div
-        style={{
-          fontFamily: 'var(--body)',
-          fontSize: 13,
-          color: 'var(--ink-3)',
-          lineHeight: 1.5,
-        }}
-      >
-        Pull the seed if you're running locally.
+        No challenges in this domain yet.
       </div>
     </SoftCard>
   )

@@ -31,6 +31,20 @@ export function ChevronLeft({ size = 14, color = 'currentColor' }: IconProps) {
   )
 }
 
+export function Cog({ size = 16, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="2.5" stroke={color} strokeWidth="1.2" />
+      <path
+        d="M8 1v2 M8 13v2 M1 8h2 M13 8h2 M3.05 3.05l1.42 1.42 M11.53 11.53l1.42 1.42 M3.05 12.95l1.42-1.42 M11.53 4.47l1.42-1.42"
+        stroke={color}
+        strokeWidth="1.2"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 export function Lightbulb({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none">

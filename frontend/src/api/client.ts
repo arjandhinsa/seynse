@@ -108,6 +108,14 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
     }
   }
 
+  // 404 on /auth/me means the token signed fine but the user it points to no
+  // longer exists (typical after a DB wipe in dev). Refresh wouldn't help — a
+  // new token would carry the same dead user_id. Treat as session-invalid:
+  // clear tokens so the route guard bounces to /auth/login instead of looping.
+  if (res.status === 404 && path === '/auth/me') {
+    clearTokens()
+  }
+
   if (!res.ok) {
     throw await parseError(res)
   }

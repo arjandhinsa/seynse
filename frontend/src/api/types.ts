@@ -170,3 +170,17 @@ export interface StartConversationRequest {
 export interface RecentConversationResponse {
   conversation_id: string | null
 }
+
+export interface AchievementCatalogEntry {
+  id: string
+  code: string
+  name: string
+  description: string | null
+  icon: string | null
+  // 'total_completions' | 'tier_reached' | 'streak_days' | 'xp_milestone' |
+  // 'challenge_repeat_count' | 'domain_balance' — kept open since backend
+  // treats it as a free string.
+  condition_type: string
+  condition_value: number
+  xp_bonus: number
+}

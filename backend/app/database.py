@@ -1,5 +1,6 @@
 from uuid import uuid4
 
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     async_sessionmaker,
@@ -12,6 +13,7 @@ from app.config import settings
 
 
 is_postgres = "postgresql" in settings.DATABASE_URL or "supabase" in settings.DATABASE_URL
+is_sqlite = "sqlite" in settings.DATABASE_URL
 
 engine = create_async_engine(
     settings.DATABASE_URL,
@@ -23,6 +25,17 @@ engine = create_async_engine(
         "prepared_statement_name_func": lambda: f"__asyncpg_{uuid4()}__",
     } if is_postgres else {},
 )
+
+# SQLite doesn't enforce foreign-key constraints by default. Without this,
+# ondelete=CASCADE / SET NULL rules silently no-op — deleting a user would
+# leave orphans in challenge_completions, conversations, etc.
+# Postgres enforces FKs natively so this only fires in dev.
+if is_sqlite:
+    @event.listens_for(engine.sync_engine, "connect")
+    def _enable_sqlite_fk(dbapi_connection, _connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
 SessionLocal = async_sessionmaker(
     engine,

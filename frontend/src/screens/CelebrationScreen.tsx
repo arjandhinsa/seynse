@@ -435,6 +435,15 @@ function useCountUp(target: number, duration: number, delay: number): number {
       setValue(0)
       return
     }
+    // Respect prefers-reduced-motion: skip straight to the final value.
+    // The CSS reduced-motion rule can't reach this rAF-driven counter.
+    if (
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    ) {
+      setValue(target)
+      return
+    }
     let raf = 0
     let startTs: number | null = null
     const startTimer = window.setTimeout(() => {

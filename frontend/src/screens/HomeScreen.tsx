@@ -9,7 +9,8 @@ import {
 } from '../components/progress'
 import { SoftCard } from '../components/SoftCard'
 import { ChevronRight } from '../components/icons'
-import { useLogout } from '../api/hooks/useAuth'
+import { useCurrentUser, useLogout } from '../api/hooks/useAuth'
+import { displayNameFor, avatarInitial } from '../lib/displayName'
 import { useOverview, useRecommendation } from '../api/hooks/useProgress'
 import type {
   DashboardOverview,
@@ -69,13 +70,18 @@ export default function HomeScreen() {
 function TopBar({ overview }: { overview: DashboardOverview | undefined }) {
   const navigate = useNavigate()
   const logout = useLogout()
+  const me = useCurrentUser()
   const handleSignOut = () => {
     logout()
     navigate('/auth/login', { replace: true })
   }
 
-  const initial =
-    overview?.display_name?.trim()?.charAt(0)?.toUpperCase() || '·'
+  const initial = overview
+    ? avatarInitial({
+        display_name: overview.display_name,
+        email: me.data?.email,
+      })
+    : '·'
 
   return (
     <header
@@ -153,7 +159,11 @@ function TopBar({ overview }: { overview: DashboardOverview | undefined }) {
 // Greeting + streak
 // ─────────────────────────────────────────────────────────────────────
 function Greeting({ overview }: { overview: DashboardOverview }) {
-  const name = overview.display_name?.trim() || 'there'
+  const me = useCurrentUser()
+  const name = displayNameFor({
+    display_name: overview.display_name,
+    email: me.data?.email,
+  })
   return (
     <section
       style={{
