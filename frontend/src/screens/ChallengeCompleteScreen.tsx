@@ -1,0 +1,429 @@
+import { useEffect, useRef, useState } from 'react'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
+import {
+  useChallengeById,
+  useCreateCompletion,
+} from '../api/hooks/useChallenges'
+import { ApiError } from '../api/client'
+import { SoftButton } from '../components/SoftButton'
+import { SoftError } from '../components/AuthLayout'
+import { SudsSlider } from '../components/SudsSlider'
+import { ChevronLeft } from '../components/icons'
+
+type Step = 1 | 2 | 3
+const ARM_TIMEOUT_MS = 5000
+
+export default function ChallengeCompleteScreen() {
+  const { id } = useParams<{ id: string }>()
+  if (!id) return <Navigate to="/challenges" replace />
+
+  return <Wizard challengeId={id} />
+}
+
+function Wizard({ challengeId }: { challengeId: string }) {
+  const navigate = useNavigate()
+  const challenge = useChallengeById(challengeId)
+  const create = useCreateCompletion(challengeId)
+
+  const [step, setStep] = useState<Step>(1)
+  const [before, setBefore] = useState(5)
+  const [after, setAfter] = useState(5)
+  const [notes, setNotes] = useState('')
+
+  const submit = async () => {
+    try {
+      const result = await create.mutateAsync({
+        anxiety_before: before,
+        anxiety_after: after,
+        notes: notes.trim() || null,
+      })
+      navigate('/celebration', { state: { result }, replace: true })
+    } catch {
+      // shown via create.isError below
+    }
+  }
+
+  const errorMessage =
+    create.isError
+      ? create.error instanceof ApiError
+        ? create.error.detail
+        : 'Something went wrong saving that. Try again in a moment.'
+      : null
+
+  return (
+    <div className="paper" style={{ minHeight: '100vh', color: 'var(--ink)' }}>
+      <div
+        style={{
+          maxWidth: 480,
+          margin: '0 auto',
+          padding: '24px 22px 64px',
+        }}
+      >
+        <Link
+          to={`/challenges/${challengeId}`}
+          aria-label="Back"
+          className="tap"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 36,
+            height: 36,
+            borderRadius: '50%',
+            border: '1px solid var(--line)',
+            background: 'transparent',
+            color: 'var(--ink-2)',
+            textDecoration: 'none',
+          }}
+        >
+          <ChevronLeft size={14} />
+        </Link>
+
+        <StepIndicator step={step} />
+
+        {step === 1 && (
+          <StepBefore
+            key="step-1"
+            value={before}
+            onChange={setBefore}
+            onContinue={() => setStep(2)}
+          />
+        )}
+
+        {step === 2 && (
+          <StepDoIt
+            key="step-2"
+            challengeName={challenge.data?.name}
+            onConfirm={() => setStep(3)}
+          />
+        )}
+
+        {step === 3 && (
+          <StepAfter
+            key="step-3"
+            value={after}
+            onChange={setAfter}
+            notes={notes}
+            onNotesChange={setNotes}
+            onSave={submit}
+            saving={create.isPending}
+            errorMessage={errorMessage}
+          />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Step indicator — three thin horizontal bars
+// ─────────────────────────────────────────────────────────────────────
+function StepIndicator({ step }: { step: Step }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        gap: 6,
+        marginTop: 24,
+        marginBottom: 36,
+      }}
+      aria-label={`Step ${step} of 3`}
+    >
+      {[1, 2, 3].map((n) => {
+        const isActive = n === step
+        const isPast = n < step
+        return (
+          <div
+            key={n}
+            style={{
+              flex: 1,
+              height: 3,
+              borderRadius: 'var(--r-pill)',
+              background:
+                isActive || isPast
+                  ? 'linear-gradient(90deg, oklch(from var(--gold) calc(l - 0.05) c h) 0%, var(--gold) 100%)'
+                  : 'var(--bg-3)',
+              boxShadow: isActive
+                ? '0 0 12px oklch(from var(--gold) l c h / 0.45)'
+                : 'none',
+              opacity: isPast && !isActive ? 0.55 : 1,
+              transition: 'all 0.3s ease',
+            }}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Step 1 — Before SUDS
+// ─────────────────────────────────────────────────────────────────────
+function StepBefore({
+  value,
+  onChange,
+  onContinue,
+}: {
+  value: number
+  onChange: (v: number) => void
+  onContinue: () => void
+}) {
+  return (
+    <div
+      className="fade-up"
+      style={{ display: 'flex', flexDirection: 'column', gap: 28 }}
+    >
+      <header>
+        <h1
+          className="display"
+          style={{
+            fontSize: 28,
+            margin: 0,
+            lineHeight: 1.15,
+            letterSpacing: '-0.005em',
+          }}
+        >
+          Before you begin.
+        </h1>
+        <p
+          style={{
+            fontFamily: 'var(--body)',
+            fontSize: 14.5,
+            color: 'var(--ink-2)',
+            marginTop: 10,
+            lineHeight: 1.5,
+          }}
+        >
+          How anxious are you right now?
+        </p>
+      </header>
+      <SudsSlider value={value} onChange={onChange} />
+      <SoftButton
+        primary
+        onClick={onContinue}
+        style={{ marginTop: 16, fontStyle: 'italic' }}
+      >
+        Continue
+      </SoftButton>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Step 2 — Do the challenge (two-tap confirm)
+// ─────────────────────────────────────────────────────────────────────
+function StepDoIt({
+  challengeName,
+  onConfirm,
+}: {
+  challengeName: string | undefined
+  onConfirm: () => void
+}) {
+  const [armed, setArmed] = useState(false)
+  const armTimer = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (armTimer.current) {
+        window.clearTimeout(armTimer.current)
+        armTimer.current = null
+      }
+    }
+  }, [])
+
+  const onTap = () => {
+    if (armed) {
+      if (armTimer.current) {
+        window.clearTimeout(armTimer.current)
+        armTimer.current = null
+      }
+      setArmed(false)
+      onConfirm()
+      return
+    }
+    setArmed(true)
+    armTimer.current = window.setTimeout(() => {
+      setArmed(false)
+      armTimer.current = null
+    }, ARM_TIMEOUT_MS)
+  }
+
+  return (
+    <div
+      className="fade-up"
+      style={{ display: 'flex', flexDirection: 'column', gap: 28 }}
+    >
+      <header>
+        <h1
+          className="display"
+          style={{
+            fontSize: 28,
+            margin: 0,
+            lineHeight: 1.15,
+            letterSpacing: '-0.005em',
+          }}
+        >
+          Now go.
+        </h1>
+        <p
+          style={{
+            fontFamily: 'var(--body)',
+            fontSize: 14.5,
+            color: 'var(--ink-2)',
+            marginTop: 10,
+            lineHeight: 1.5,
+          }}
+        >
+          Do the challenge in real life. When you genuinely have, tap below.
+        </p>
+      </header>
+
+      {challengeName && (
+        <div
+          style={{
+            padding: '14px 16px',
+            background: 'var(--bg-2)',
+            border: '1px solid var(--line)',
+            borderRadius: 'var(--r-md)',
+          }}
+        >
+          <div
+            className="label"
+            style={{ marginBottom: 4, color: 'var(--ink-3)' }}
+          >
+            challenge
+          </div>
+          <div
+            className="display-italic"
+            style={{ fontSize: 17, color: 'var(--ink)', lineHeight: 1.3 }}
+          >
+            {challengeName}
+          </div>
+        </div>
+      )}
+
+      <button
+        onClick={onTap}
+        className="tap"
+        style={{
+          padding: '15px 18px',
+          width: '100%',
+          borderRadius: 'var(--r-pill)',
+          background: armed
+            ? 'transparent'
+            : 'linear-gradient(180deg, oklch(from var(--gold) calc(l - 0.18) c h) 0%, oklch(from var(--gold) calc(l - 0.32) c h) 100%)',
+          border: armed
+            ? '1px solid oklch(from var(--gold) l c h / 0.85)'
+            : '1px solid oklch(from var(--gold) l c h / 0.55)',
+          color: armed ? 'var(--gold-2)' : 'var(--ink)',
+          fontFamily: 'var(--display)',
+          fontStyle: 'italic',
+          fontSize: 15,
+          fontWeight: 400,
+          letterSpacing: '0.01em',
+          boxShadow: armed
+            ? '0 0 0 4px oklch(from var(--gold) l c h / 0.18), 0 0 24px oklch(from var(--gold) l c h / 0.30)'
+            : '0 0 28px oklch(from var(--gold) l c h / 0.25)',
+          transition: 'all 0.18s ease',
+          marginTop: 8,
+          cursor: 'pointer',
+        }}
+      >
+        {armed ? 'tap again to confirm' : 'I did it'}
+      </button>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Step 3 — After SUDS + notes
+// ─────────────────────────────────────────────────────────────────────
+function StepAfter({
+  value,
+  onChange,
+  notes,
+  onNotesChange,
+  onSave,
+  saving,
+  errorMessage,
+}: {
+  value: number
+  onChange: (v: number) => void
+  notes: string
+  onNotesChange: (n: string) => void
+  onSave: () => void
+  saving: boolean
+  errorMessage: string | null
+}) {
+  return (
+    <div
+      className="fade-up"
+      style={{ display: 'flex', flexDirection: 'column', gap: 26 }}
+    >
+      <header>
+        <h1
+          className="display"
+          style={{
+            fontSize: 28,
+            margin: 0,
+            lineHeight: 1.15,
+            letterSpacing: '-0.005em',
+          }}
+        >
+          How does it feel?
+        </h1>
+        <p
+          style={{
+            fontFamily: 'var(--body)',
+            fontSize: 14.5,
+            color: 'var(--ink-2)',
+            marginTop: 10,
+            lineHeight: 1.5,
+          }}
+        >
+          Rate your anxiety now.
+        </p>
+      </header>
+
+      <SudsSlider value={value} onChange={onChange} />
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <label htmlFor="suds-notes" className="label">
+          Anything to remember?
+        </label>
+        <textarea
+          id="suds-notes"
+          value={notes}
+          onChange={(e) => onNotesChange(e.target.value)}
+          placeholder="Optional. A line about what happened, or how you felt."
+          rows={4}
+          style={{
+            width: '100%',
+            minHeight: 92,
+            padding: '12px 14px',
+            background: 'var(--bg-2)',
+            border: '1px solid var(--line)',
+            borderRadius: 'var(--r-md)',
+            color: 'var(--ink)',
+            fontFamily: 'var(--body)',
+            fontSize: 14,
+            lineHeight: 1.5,
+            resize: 'vertical',
+            outline: 'none',
+          }}
+        />
+      </div>
+
+      {errorMessage && <SoftError message={errorMessage} />}
+
+      <SoftButton
+        primary
+        onClick={onSave}
+        disabled={saving}
+        style={{ fontStyle: 'italic' }}
+      >
+        {saving ? 'Saving…' : 'Save'}
+      </SoftButton>
+    </div>
+  )
+}

@@ -12,11 +12,24 @@ The stub keeps the frontend working with something defensible until then.
 
 Rules, in order:
 1. Cold start (0 completions): first Tier-1 Social challenge.
-2. Pick the domain with fewer completions (tie → Social).
-3. Tier = max_tier completed in that domain, or 1 if user has never touched it.
-   Stub never pushes the user up a tier — that requires SUDS evidence (Phase 4).
-4. Among candidates at that domain+tier, pick the one the user has completed
-   least often. Tie → lowest sort_order.
+2. Dating gate: don't recommend Dating until user has demonstrated
+   (a) >= 5 Social completions AND (b) >= 1 Social Tier-2 attempt.
+   Therapeutic rationale: Dating-domain anxiety is clinically heavier
+   than Social-domain anxiety (rejection sensitivity, attractiveness
+   self-judgement, identity vulnerability). Even Tier-1 Dating
+   ("eye contact with someone attractive") activates different neural
+   circuitry than Tier-1 Social ("eye contact with anyone"). So the
+   recommender stays in Social until the user has both REPETITION
+   (>=5 challenges) and TIER PROGRESSION (past pure presence into
+   Tier-2 scripted interaction). Once both conditions met, Dating opens.
+   This gate ONLY restricts recommendations — users can still browse
+   the Dating tab and self-select any Dating challenge.
+3. After gate: pick the domain with fewer completions (tie -> Social).
+4. Tier = max_tier completed in that domain, or 1 if user has never
+   touched it. Stub never pushes the user up a tier — that requires
+   SUDS evidence (Phase 4).
+5. Among candidates at that domain+tier, pick the one the user has
+   completed least often. Tie -> lowest sort_order.
 """
 
 from pydantic import BaseModel
@@ -34,6 +47,14 @@ DOMAIN_DISPLAY = {
     "social": "Social",
     "dating": "Dating",
 }
+
+
+# Dating-unlock gate. Both conditions must be true before the recommender
+# starts surfacing Dating challenges.
+# Therapeutic: build basic Social comfort + demonstrate tier progression
+# before introducing romantic-context exposure.
+DATING_UNLOCK_MIN_SOCIAL = 5           # min total Social completions
+DATING_UNLOCK_MIN_SOCIAL_TIER = 2      # min Social tier reached
 
 
 class Recommendation(BaseModel):
@@ -77,14 +98,36 @@ async def recommend_next(user: User, session: AsyncSession) -> Recommendation | 
             name=first.name,
             domain=first.domain,
             tier=first.tier,
-            reason="Welcome — let's start with a gentle Social challenge.",
+            reason="Let's start with a gentle Social challenge.",
         )
 
-    # --- Rule 2: underserved domain. min() over DOMAIN_PRIORITY keeps the
-    # tie-break deterministic (Social wins ties because it comes first). ---
-    target_domain = min(DOMAIN_PRIORITY, key=lambda d: domain_counts[d])
+    # --- Rule 2: Dating-unlock gate ---
+    # Get max Social tier reached for the gate check.
+    max_social_tier = (await session.execute(
+        select(func.max(Challenge.tier))
+        .join(ChallengeCompletion, Challenge.id == ChallengeCompletion.challenge_id)
+        .where(
+            ChallengeCompletion.user_id == user.id,
+            Challenge.domain == "social",
+        )
+    )).scalar() or 0
 
-    # --- Rule 3: tier = max completed in target domain, or 1 if untouched ---
+    dating_unlocked = (
+        domain_counts["social"] >= DATING_UNLOCK_MIN_SOCIAL
+        or max_social_tier >= DATING_UNLOCK_MIN_SOCIAL_TIER
+    )
+
+    # --- Rule 3: domain selection ---
+    if not dating_unlocked:
+        # Stay in Social until both gate conditions are met.
+        target_domain = "social"
+    else:
+        # Anti-avoidance: pick whichever domain has fewer completions.
+        # min() over DOMAIN_PRIORITY keeps the tie-break deterministic
+        # (Social wins ties because it comes first in the tuple).
+        target_domain = min(DOMAIN_PRIORITY, key=lambda d: domain_counts[d])
+
+    # --- Rule 4: tier = max completed in target domain, or 1 if untouched ---
     max_tier = (await session.execute(
         select(func.max(Challenge.tier))
         .join(ChallengeCompletion, Challenge.id == ChallengeCompletion.challenge_id)
@@ -95,7 +138,7 @@ async def recommend_next(user: User, session: AsyncSession) -> Recommendation | 
     )).scalar()
     target_tier = max_tier or 1
 
-    # --- Rule 4: candidates at that domain+tier, ranked by completion count ---
+    # --- Rule 5: candidates at that domain+tier, ranked by completion count ---
     candidates = (await session.execute(
         select(Challenge)
         .where(Challenge.domain == target_domain, Challenge.tier == target_tier)
@@ -125,15 +168,28 @@ async def recommend_next(user: User, session: AsyncSession) -> Recommendation | 
         name=best.name,
         domain=best.domain,
         tier=best.tier,
-        reason=_build_reason(target_domain, target_tier, domain_counts),
+        reason=_build_reason(target_domain, target_tier, domain_counts, dating_unlocked),
     )
 
+# ======================================================
+# Helpers 
+# ======================================================
 
-def _build_reason(target_domain: str, target_tier: int, domain_counts: dict[str, int]) -> str:
+
+def _build_reason(
+    target_domain: str,
+    target_tier: int,
+    domain_counts: dict[str, int],
+    dating_unlocked: bool,
+) -> str:
     """Generate the user-facing explanation for the recommendation."""
-    other = "dating" if target_domain == "social" else "social"
     target_name = DOMAIN_DISPLAY[target_domain]
 
+    # Early-Social bias active — be honest about why we're staying in Social
+    if target_domain == "social" and not dating_unlocked:
+        return "Stay close to Social for now. Let it become familiar."
+
+    other = "dating" if target_domain == "social" else "social"
     if domain_counts[target_domain] < domain_counts[other]:
         other_name = DOMAIN_DISPLAY[other]
         return f"You've been focusing on {other_name}. Let's practise a {target_name} challenge."
