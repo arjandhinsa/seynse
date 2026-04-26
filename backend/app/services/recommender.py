@@ -36,7 +36,7 @@ from pydantic import BaseModel
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Challenge, ChallengeCompletion, User
+from app.models import Challenge, ChallengeCompletion, RecommendationLog, User
 
 
 # Tuple order matters: first entry is the tie-break winner for domain selection.
@@ -93,13 +93,14 @@ async def recommend_next(user: User, session: AsyncSession) -> Recommendation | 
         )).scalar_one_or_none()
         if first is None:
             return None
-        return Recommendation(
+        rec = Recommendation(
             challenge_id=first.id,
             name=first.name,
             domain=first.domain,
             tier=first.tier,
             reason="Let's start with a gentle Social challenge.",
         )
+        return await _log_and_return(session, user.id, rec)
 
     # --- Rule 2: Dating-unlock gate ---
     # Get max Social tier reached for the gate check.
@@ -163,17 +164,40 @@ async def recommend_next(user: User, session: AsyncSession) -> Recommendation | 
     # Pick least-completed; ties broken by sort_order (preserved by the query above).
     best = min(candidates, key=lambda c: counts[c.id])
 
-    return Recommendation(
+    rec = Recommendation(
         challenge_id=best.id,
         name=best.name,
         domain=best.domain,
         tier=best.tier,
         reason=_build_reason(target_domain, target_tier, domain_counts, dating_unlocked),
     )
+    return await _log_and_return(session, user.id, rec)
 
 # ======================================================
-# Helpers 
+# Helpers
 # ======================================================
+
+
+async def _log_and_return(
+    session: AsyncSession,
+    user_id: str,
+    rec: Recommendation,
+) -> Recommendation:
+    """Persist a row to recommendation_logs, then return the recommendation.
+
+    Pure data collection — the row is read by the Phase 4 ML training
+    pipeline (joined against completions to derive 'was_followed'). No
+    runtime code reads from the table.
+    """
+    session.add(RecommendationLog(
+        user_id=user_id,
+        challenge_id=rec.challenge_id,
+        strategy="rules",
+        reason=rec.reason,
+        confidence=None,
+    ))
+    await session.commit()
+    return rec
 
 
 def _build_reason(

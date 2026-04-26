@@ -12,6 +12,7 @@ from app.models.user import User
 from app.models.challenge import Challenge, ChallengeCompletion
 from app.models.conversation import Conversation, Message
 from app.models.achievement import Achievement, UserAchievement
+from app.models.recommendation_log import RecommendationLog
 
 __all__ = [
     "User",
@@ -21,4 +22,5 @@ __all__ = [
     "Message",
     "Achievement",
     "UserAchievement",
+    "RecommendationLog",
 ]
